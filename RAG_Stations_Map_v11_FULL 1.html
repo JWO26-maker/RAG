@@ -1,0 +1,1013 @@
+
+<!DOCTYPE html>
+
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1" name="viewport"/>
+<title>RAG Stations Map (v6)</title>
+<link crossorigin="" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" rel="stylesheet"/>
+<style>
+    html, body, #map { height: 100%; margin: 0; }
+    .legend { position: absolute; bottom: 16px; left: 12px; background: white; padding: 10px; border-radius: 6px; box-shadow: 0 1px 4px rgba(0,0,0,.3); font-family: system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif; font-size: 14px; }
+    .legend .row { display: flex; align-items: center; margin: 4px 0; }
+    .legend .swatch { width: 14px; height: 14px; border-radius: 50%; display: inline-block; margin-right: 8px; border: 1px solid #666; }
+  </style>
+</head>
+<body>
+<div id="map"></div>
+<div class="legend">
+<div style="font-weight:600; margin-bottom:6px;">Legend</div>
+<div class="row"><span class="swatch" style="background:#1E7F2D"></span>Dark Green</div>
+<div class="row"><span class="swatch" style="background:#8BD17C"></span>Light Green</div>
+<div class="row"><span class="swatch" style="background:#D97706"></span>Dark Amber</div>
+<div class="row"><span class="swatch" style="background:#FBBF24"></span>Light Amber</div>
+<div class="row"><span class="swatch" style="background:#DC2626"></span>Red</div>
+</div>
+<script crossorigin="" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+<script>
+  const stations = [
+  {
+    "code": "ABZ",
+    "category": "Amber",
+    "color": "#E69311",
+    "engine": "No",
+    "justification": "No units avlb, although generally low temp - consider temp",
+    "turnRank": 17,
+    "turnTotal": 39
+  },
+  {
+    "code": "ACE",
+    "category": "Green",
+    "color": "#55A854",
+    "engine": "Yes — conditional",
+    "justification": "Stand allocation likely completed by time of notificaiton",
+    "turnRank": 17,
+    "turnTotal": 33
+  },
+  {
+    "code": "ADB",
+    "category": "Green",
+    "color": "#4CA14E",
+    "engine": "Yes — on stand",
+    "justification": "All airbridges are equippped with ACU/PCA",
+    "turnRank": 10,
+    "turnTotal": 33
+  },
+  {
+    "code": "AGP",
+    "category": "Green",
+    "color": "#51A552",
+    "engine": "Yes — on stand",
+    "justification": "24 ACU/PCAs on jetbridge stands",
+    "turnRank": 13,
+    "turnTotal": 33
+  },
+  {
+    "code": "ALC",
+    "category": "Green",
+    "color": "#489E4B",
+    "engine": "No — remote only",
+    "justification": "All jetbridge \n1 portable unit",
+    "turnRank": 9,
+    "turnTotal": 33
+  },
+  {
+    "code": "AMS",
+    "category": "Green",
+    "color": "#36913E",
+    "engine": "No — remote only",
+    "justification": "7 on H pier stands",
+    "turnRank": 2,
+    "turnTotal": 33
+  },
+  {
+    "code": "BCN",
+    "category": "Amber",
+    "color": "#E48E0F",
+    "engine": "Yes — on stand",
+    "justification": "6 PCAs although Shengen only",
+    "turnRank": 11,
+    "turnTotal": 39
+  },
+  {
+    "code": "BER",
+    "category": "Amber",
+    "color": "#EB9E16",
+    "engine": "No — remote only",
+    "justification": "Only 1 unit",
+    "turnRank": 27,
+    "turnTotal": 39
+  },
+  {
+    "code": "BFS",
+    "category": "Amber",
+    "color": "#EA9B15",
+    "engine": "No",
+    "justification": "Generally low temperatures - low number of reports last year",
+    "turnRank": 24,
+    "turnTotal": 39
+  },
+  {
+    "code": "BHD",
+    "category": "Amber",
+    "color": "#E28A0E",
+    "engine": "No",
+    "justification": "Generally low temperatures - low number of reports last year ",
+    "turnRank": 6,
+    "turnTotal": 39
+  },
+  {
+    "code": "BHX",
+    "category": "Amber",
+    "color": "#E79412",
+    "engine": "No",
+    "justification": "No units avlb, although generally low temp - consider temp",
+    "turnRank": 19,
+    "turnTotal": 39
+  },
+  {
+    "code": "BIO",
+    "category": "Amber",
+    "color": "#E38D0F",
+    "engine": "Yes — on stand",
+    "justification": "jetbridge only ",
+    "turnRank": 9,
+    "turnTotal": 39
+  },
+  {
+    "code": "BJV",
+    "category": "Green",
+    "color": "#4DA24F",
+    "engine": "No",
+    "justification": "All airbridges are equippped with ACU/PCA",
+    "turnRank": 12,
+    "turnTotal": 33
+  },
+  {
+    "code": "BOD",
+    "category": "Red",
+    "color": "#E54040",
+    "engine": "Yes — on stand",
+    "justification": null,
+    "turnRank": 10,
+    "turnTotal": 35
+  },
+  {
+    "code": "BOJ",
+    "category": "Red",
+    "color": "#E64242",
+    "engine": "No — remote only",
+    "justification": null,
+    "turnRank": 12,
+    "turnTotal": 35
+  },
+  {
+    "code": "BRI",
+    "category": "Green",
+    "color": "#479E4A",
+    "engine": "No",
+    "justification": "Available at airbridge stands",
+    "turnRank": 8,
+    "turnTotal": 33
+  },
+  {
+    "code": "BRS",
+    "category": "Amber",
+    "color": "#E38C0F",
+    "engine": "Yes — on stand",
+    "justification": "No units avlb, although generally low temp - consider temp",
+    "turnRank": 8,
+    "turnTotal": 39
+  },
+  {
+    "code": "BSL",
+    "category": "Green",
+    "color": "#3E9744",
+    "engine": "No — remote only",
+    "justification": "3 mobile units available",
+    "turnRank": 3,
+    "turnTotal": 33
+  },
+  {
+    "code": "CAG",
+    "category": "Green",
+    "color": "#53A753",
+    "engine": "Yes — on stand",
+    "justification": "All airbridges are equippped with ACU/PCA",
+    "turnRank": 14,
+    "turnTotal": 33
+  },
+  {
+    "code": "CDG",
+    "category": "Green",
+    "color": "#5EAF5B",
+    "engine": "No — remote only",
+    "justification": "2 mobile ACU now. 5 additional airbridges planned to be equipped",
+    "turnRank": 23,
+    "turnTotal": 33
+  },
+  {
+    "code": "CFU",
+    "category": "Red",
+    "color": "#EA4B4B",
+    "engine": "No",
+    "justification": null,
+    "turnRank": 18,
+    "turnTotal": 35
+  },
+  {
+    "code": "CHQ",
+    "category": "Red",
+    "color": "#EE5858",
+    "engine": "No",
+    "justification": null,
+    "turnRank": 28,
+    "turnTotal": 35
+  },
+  {
+    "code": "CPH",
+    "category": "Amber",
+    "color": "#DE820A",
+    "engine": "Yes — on stand",
+    "justification": "GOM: PCA not avlb at eJ terminal. Generally low temperatures - low number of reports last year ",
+    "turnRank": 4,
+    "turnTotal": 39
+  },
+  {
+    "code": "CTA",
+    "category": "Green",
+    "color": "#65B460",
+    "engine": "Yes — on stand",
+    "justification": "2 unit available and engine start approved",
+    "turnRank": 29,
+    "turnTotal": 33
+  },
+  {
+    "code": "DBV",
+    "category": "Red",
+    "color": "#F87171",
+    "engine": "No",
+    "justification": null,
+    "turnRank": 33,
+    "turnTotal": 35
+  },
+  {
+    "code": "DJE",
+    "category": "Red",
+    "color": "#EC5151",
+    "engine": null,
+    "justification": null,
+    "turnRank": 25,
+    "turnTotal": 35
+  },
+  {
+    "code": "DLM",
+    "category": "Green",
+    "color": "#55A855",
+    "engine": "No",
+    "justification": "8 units on airbridge - 1 mobile unit",
+    "turnRank": 19,
+    "turnTotal": 33
+  },
+  {
+    "code": "EDI",
+    "category": "Amber",
+    "color": "#EFA619",
+    "engine": "Yes — on stand",
+    "justification": "Generally low temperatures - low number of reports last year",
+    "turnRank": 31,
+    "turnTotal": 39
+  },
+  {
+    "code": "EFL",
+    "category": "Red",
+    "color": "#EC5151",
+    "engine": "Yes — on stand",
+    "justification": null,
+    "turnRank": 23,
+    "turnTotal": 35
+  },
+  {
+    "code": "FAO",
+    "category": "Green",
+    "color": "#54A854",
+    "engine": "No",
+    "justification": "All jetbridges equipped",
+    "turnRank": 16,
+    "turnTotal": 33
+  },
+  {
+    "code": "FCO",
+    "category": "Green",
+    "color": "#6BB965",
+    "engine": "No",
+    "justification": "3 ACUs",
+    "turnRank": 31,
+    "turnTotal": 33
+  },
+  {
+    "code": "FNC",
+    "category": "Red",
+    "color": "#E74444",
+    "engine": "No",
+    "justification": null,
+    "turnRank": 15,
+    "turnTotal": 35
+  },
+  {
+    "code": "FUE",
+    "category": "Green",
+    "color": "#5CAD5A",
+    "engine": "Yes — conditional",
+    "justification": "All jetbridges and 2 mobile units",
+    "turnRank": 22,
+    "turnTotal": 33
+  },
+  {
+    "code": "GIB",
+    "category": "Red",
+    "color": "#F87171",
+    "engine": "Yes — on stand",
+    "justification": null,
+    "turnRank": 34,
+    "turnTotal": 35
+  },
+  {
+    "code": "GLA",
+    "category": "Amber",
+    "color": "#E59010",
+    "engine": "No",
+    "justification": "Generally low temperatures - 0 reports last year",
+    "turnRank": 15,
+    "turnTotal": 39
+  },
+  {
+    "code": "GVA",
+    "category": "Green",
+    "color": "#58AB57",
+    "engine": "No",
+    "justification": "29 PCAs available, 2 mobile ACUs",
+    "turnRank": 20,
+    "turnTotal": 33
+  },
+  {
+    "code": "HER",
+    "category": "Red",
+    "color": "#EB4F4F",
+    "engine": "No",
+    "justification": null,
+    "turnRank": 19,
+    "turnTotal": 35
+  },
+  {
+    "code": "HRG",
+    "category": "Amber",
+    "color": "#FBBF24",
+    "engine": null,
+    "justification": "3 ACU, although according GOM unlikely to be provided",
+    "turnRank": 38,
+    "turnTotal": 39
+  },
+  {
+    "code": "IBZ",
+    "category": "Amber",
+    "color": "#FBBF24",
+    "engine": "Yes — on stand",
+    "justification": "Planned to have 4 units (terminal works at time of report)",
+    "turnRank": 36,
+    "turnTotal": 39
+  },
+  {
+    "code": "INV",
+    "category": "Amber",
+    "color": "#E48F10",
+    "engine": "Yes — on stand",
+    "justification": "No units avlb, although generally low temp - consider temp",
+    "turnRank": 12,
+    "turnTotal": 39
+  },
+  {
+    "code": "JER",
+    "category": "Amber",
+    "color": "#DE820A",
+    "engine": "No",
+    "justification": "No units avlb, although generally low temp - consider temp",
+    "turnRank": 3,
+    "turnTotal": 39
+  },
+  {
+    "code": "JMK",
+    "category": "Red",
+    "color": "#EE5858",
+    "engine": "No",
+    "justification": null,
+    "turnRank": 30,
+    "turnTotal": 35
+  },
+  {
+    "code": "JSI",
+    "category": "Red",
+    "color": "#E64141",
+    "engine": "Unknown",
+    "justification": null,
+    "turnRank": 11,
+    "turnTotal": 35
+  },
+  {
+    "code": "JTR",
+    "category": "Red",
+    "color": "#E53F3F",
+    "engine": "No",
+    "justification": null,
+    "turnRank": 9,
+    "turnTotal": 35
+  },
+  {
+    "code": "KEF",
+    "category": "Amber",
+    "color": "#EEA418",
+    "engine": "Yes — on stand",
+    "justification": "No units avlb, although generally low temp - consider temp",
+    "turnRank": 30,
+    "turnTotal": 39
+  },
+  {
+    "code": "KGS",
+    "category": "Red",
+    "color": "#E74343",
+    "engine": "No",
+    "justification": null,
+    "turnRank": 14,
+    "turnTotal": 35
+  },
+  {
+    "code": "KRK",
+    "category": "Amber",
+    "color": "#E48F10",
+    "engine": "No — remote only",
+    "justification": "No units avlb, although generally low temp - consider temp",
+    "turnRank": 14,
+    "turnTotal": 39
+  },
+  {
+    "code": "LCG",
+    "category": "Red",
+    "color": "#E43C3C",
+    "engine": "Yes — on stand",
+    "justification": null,
+    "turnRank": 5,
+    "turnTotal": 35
+  },
+  {
+    "code": "LDY",
+    "category": "Amber",
+    "color": "#DE830B",
+    "engine": "No",
+    "justification": "Generally low temperatures - low number of reports last year ",
+    "turnRank": 5,
+    "turnTotal": 39
+  },
+  {
+    "code": "LEI",
+    "category": "Red",
+    "color": "#EF5959",
+    "engine": "No",
+    "justification": null,
+    "turnRank": 31,
+    "turnTotal": 35
+  },
+  {
+    "code": "LGW",
+    "category": "Green",
+    "color": "#469D4A",
+    "engine": "Yes — on stand",
+    "justification": "2 mobile ACUs on fixed stands",
+    "turnRank": 7,
+    "turnTotal": 33
+  },
+  {
+    "code": "LIS",
+    "category": "Green",
+    "color": "#64B35F",
+    "engine": "No",
+    "justification": "1 dedicated unit",
+    "turnRank": 27,
+    "turnTotal": 33
+  },
+  {
+    "code": "LJU",
+    "category": "Red",
+    "color": "#EC5151",
+    "engine": "No",
+    "justification": null,
+    "turnRank": 24,
+    "turnTotal": 35
+  },
+  {
+    "code": "LPA",
+    "category": "Green",
+    "color": "#55A854",
+    "engine": "No",
+    "justification": "All stands equipped with ACU, 1 mobile",
+    "turnRank": 18,
+    "turnTotal": 33
+  },
+  {
+    "code": "LPL",
+    "category": "Amber",
+    "color": "#E38C0E",
+    "engine": "No — remote only",
+    "justification": "Generally low temperatures - low number of reports last year ",
+    "turnRank": 7,
+    "turnTotal": 39
+  },
+  {
+    "code": "LRH",
+    "category": "Red",
+    "color": "#EE5858",
+    "engine": null,
+    "justification": null,
+    "turnRank": 27,
+    "turnTotal": 35
+  },
+  {
+    "code": "LTN",
+    "category": "Amber",
+    "color": "#E69412",
+    "engine": "No",
+    "justification": "Generally low temperatures - low number of reports last year ",
+    "turnRank": 18,
+    "turnTotal": 39
+  },
+  {
+    "code": "LYS",
+    "category": "Amber",
+    "color": "#E99914",
+    "engine": "No",
+    "justification": "1 ACU",
+    "turnRank": 23,
+    "turnTotal": 39
+  },
+  {
+    "code": "MAD",
+    "category": "Red",
+    "color": "#EB5050",
+    "engine": "Yes — on stand",
+    "justification": null,
+    "turnRank": 21,
+    "turnTotal": 35
+  },
+  {
+    "code": "MAH",
+    "category": "Green",
+    "color": "#4DA24F",
+    "engine": "Yes — on stand",
+    "justification": "Jetbridge PCA only",
+    "turnRank": 11,
+    "turnTotal": 33
+  },
+  {
+    "code": "MAN",
+    "category": "Amber",
+    "color": "#E38E0F",
+    "engine": "No — remote only",
+    "justification": "No units avlb, although generally low temp - consider temp",
+    "turnRank": 10,
+    "turnTotal": 39
+  },
+  {
+    "code": "MPL",
+    "category": "Green",
+    "color": "#62B25E",
+    "engine": null,
+    "justification": "5 mobile units ",
+    "turnRank": null,
+    "turnTotal": 33
+  },
+  {
+    "code": "MXP",
+    "category": "Green",
+    "color": "#419946",
+    "engine": "No — remote only",
+    "justification": "All stands equipped with ACU",
+    "turnRank": 5,
+    "turnTotal": 33
+  },
+  {
+    "code": "NAP",
+    "category": "Green",
+    "color": "#53A753",
+    "engine": "No",
+    "justification": "18 stands equipped with PCA",
+    "turnRank": 15,
+    "turnTotal": 33
+  },
+  {
+    "code": "NBE",
+    "category": "Amber",
+    "color": "#FBBF24",
+    "engine": null,
+    "justification": "1 ACU available",
+    "turnRank": 39,
+    "turnTotal": 39
+  },
+  {
+    "code": "NCE",
+    "category": "Amber",
+    "color": "#EEA418",
+    "engine": "No",
+    "justification": "1 ACU in afternoon, possibly 1 dedicated one",
+    "turnRank": 29,
+    "turnTotal": 39
+  },
+  {
+    "code": "NQY",
+    "category": "Amber",
+    "color": "#E48F10",
+    "engine": "Yes — on stand",
+    "justification": "Generally low temperatures - low number of reports last year ",
+    "turnRank": 13,
+    "turnTotal": 39
+  },
+  {
+    "code": "NTE",
+    "category": "Amber",
+    "color": "#EB9D15",
+    "engine": "No",
+    "justification": "1 ACU",
+    "turnRank": 26,
+    "turnTotal": 39
+  },
+  {
+    "code": "OLB",
+    "category": "Green",
+    "color": "#61B25E",
+    "engine": "Unknown",
+    "justification": "5 at airbridge stands, 2 ACU",
+    "turnRank": 26,
+    "turnTotal": 33
+  },
+  {
+    "code": "OPO",
+    "category": "Amber",
+    "color": "#EFA619",
+    "engine": "No",
+    "justification": "Only non shengen flights",
+    "turnRank": 32,
+    "turnTotal": 39
+  },
+  {
+    "code": "ORY",
+    "category": "Green",
+    "color": "#5FB05C",
+    "engine": "No",
+    "justification": "3 ACUs",
+    "turnRank": 24,
+    "turnTotal": 33
+  },
+  {
+    "code": "PFO",
+    "category": "Amber",
+    "color": "#F4B11E",
+    "engine": "Yes — on stand",
+    "justification": "1 ACU",
+    "turnRank": 34,
+    "turnTotal": 39
+  },
+  {
+    "code": "PMI",
+    "category": "Green",
+    "color": "#6BB964",
+    "engine": "Yes — on stand",
+    "justification": "Jetbridges equipped and 2 mobile units",
+    "turnRank": 30,
+    "turnTotal": 33
+  },
+  {
+    "code": "PMO",
+    "category": "Green",
+    "color": "#65B460",
+    "engine": "No",
+    "justification": "6 PCA on airbridge and 2 ACU",
+    "turnRank": 28,
+    "turnTotal": 33
+  },
+  {
+    "code": "PRG",
+    "category": "Amber",
+    "color": "#E89713",
+    "engine": "No — remote only",
+    "justification": "Only Terminal 1 where we usually don’t operate to ( Stands 17–24 are equipped with ACU)",
+    "turnRank": 21,
+    "turnTotal": 39
+  },
+  {
+    "code": "PRN",
+    "category": "Green",
+    "color": "#3F9845",
+    "engine": "Unknown",
+    "justification": "4 PCA on airbridge",
+    "turnRank": 4,
+    "turnTotal": 33
+  },
+  {
+    "code": "PSA",
+    "category": "Green",
+    "color": "#70BD69",
+    "engine": "Unknown",
+    "justification": "2 units available",
+    "turnRank": 33,
+    "turnTotal": 33
+  },
+  {
+    "code": "PUY",
+    "category": "Red",
+    "color": "#E43D3D",
+    "engine": "Yes — on stand",
+    "justification": null,
+    "turnRank": 6,
+    "turnTotal": 35
+  },
+  {
+    "code": "PVK",
+    "category": "Red",
+    "color": "#F87171",
+    "engine": "Conditional",
+    "justification": null,
+    "turnRank": 35,
+    "turnTotal": 35
+  },
+  {
+    "code": "RAK",
+    "category": "Amber",
+    "color": "#EDA318",
+    "engine": "No",
+    "justification": "1 unit available",
+    "turnRank": 28,
+    "turnTotal": 39
+  },
+  {
+    "code": "RHO",
+    "category": "Red",
+    "color": "#E33A3A",
+    "engine": "No",
+    "justification": null,
+    "turnRank": 4,
+    "turnTotal": 35
+  },
+  {
+    "code": "RMF",
+    "category": "Amber",
+    "color": "#F0A91A",
+    "engine": "Conditional",
+    "justification": "1 unit available",
+    "turnRank": 33,
+    "turnTotal": 39
+  },
+  {
+    "code": "RMI",
+    "category": "Red",
+    "color": "#E53E3E",
+    "engine": "Yes — on stand",
+    "justification": null,
+    "turnRank": 7,
+    "turnTotal": 35
+  },
+  {
+    "code": "RMU",
+    "category": "Red",
+    "color": "#EB5050",
+    "engine": "No",
+    "justification": null,
+    "turnRank": 20,
+    "turnTotal": 35
+  },
+  {
+    "code": "SEN",
+    "category": "Amber",
+    "color": "#DE820A",
+    "engine": "No — remote only",
+    "justification": "No units avlb, although generally low temp - consider temp",
+    "turnRank": 2,
+    "turnTotal": 39
+  },
+  {
+    "code": "SKG",
+    "category": "Red",
+    "color": "#EE5858",
+    "engine": "No",
+    "justification": null,
+    "turnRank": 29,
+    "turnTotal": 35
+  },
+  {
+    "code": "SOF",
+    "category": "Amber",
+    "color": "#E89813",
+    "engine": "No",
+    "justification": "1 unit available",
+    "turnRank": 22,
+    "turnTotal": 39
+  },
+  {
+    "code": "SOU",
+    "category": "Amber",
+    "color": "#DE820A",
+    "engine": "No",
+    "justification": "Generally low temperatures - low number of reports last year ",
+    "turnRank": 1,
+    "turnTotal": 39
+  },
+  {
+    "code": "SPC",
+    "category": "Red",
+    "color": "#E74343",
+    "engine": "Yes — on stand",
+    "justification": null,
+    "turnRank": 13,
+    "turnTotal": 35
+  },
+  {
+    "code": "SPU",
+    "category": "Red",
+    "color": "#EC5252",
+    "engine": "Yes — on stand",
+    "justification": null,
+    "turnRank": 26,
+    "turnTotal": 35
+  },
+  {
+    "code": "SPX",
+    "category": "Amber",
+    "color": "#FBBF24",
+    "engine": "No",
+    "justification": "2 units available, although unlikely to obtain according GOM",
+    "turnRank": 37,
+    "turnTotal": 39
+  },
+  {
+    "code": "SSH",
+    "category": "Amber",
+    "color": "#F8BA21",
+    "engine": "Yes — on stand (idle power)",
+    "justification": "3 units available, although unlikely to obtain according GOM",
+    "turnRank": 35,
+    "turnTotal": 39
+  },
+  {
+    "code": "SUF",
+    "category": "Amber",
+    "color": "#E79512",
+    "engine": "Yes — on stand",
+    "justification": "1 unit",
+    "turnRank": 20,
+    "turnTotal": 39
+  },
+  {
+    "code": "SVQ",
+    "category": "Green",
+    "color": "#59AB58",
+    "engine": "No",
+    "justification": "Shengen there 5 stand with ACU and non-Schengen only 2.",
+    "turnRank": 21,
+    "turnTotal": 33
+  },
+  {
+    "code": "SXB",
+    "category": "Red",
+    "color": "#EB5050",
+    "engine": null,
+    "justification": null,
+    "turnRank": 22,
+    "turnTotal": 35
+  },
+  {
+    "code": "TFS",
+    "category": "Green",
+    "color": "#61B15D",
+    "engine": "Yes — on stand",
+    "justification": "Jetbridges equipped ",
+    "turnRank": 25,
+    "turnTotal": 33
+  },
+  {
+    "code": "TIA",
+    "category": "Red",
+    "color": "#F87171",
+    "engine": "Yes — on stand",
+    "justification": null,
+    "turnRank": 32,
+    "turnTotal": 35
+  },
+  {
+    "code": "TIV",
+    "category": "Red",
+    "color": "#E33A3A",
+    "engine": "Yes — on stand",
+    "justification": null,
+    "turnRank": 3,
+    "turnTotal": 35
+  },
+  {
+    "code": "TLS",
+    "category": "Red",
+    "color": "#EA4B4B",
+    "engine": null,
+    "justification": null,
+    "turnRank": 17,
+    "turnTotal": 35
+  },
+  {
+    "code": "VCE",
+    "category": "Green",
+    "color": "#6CB965",
+    "engine": "Conditional",
+    "justification": "16 PCA and 1 mobile ACU)",
+    "turnRank": 32,
+    "turnTotal": 33
+  },
+  {
+    "code": "VLC",
+    "category": "Green",
+    "color": "#449C49",
+    "engine": "Yes — on stand",
+    "justification": "6 on airbridge, 1 remote",
+    "turnRank": 6,
+    "turnTotal": 33
+  },
+  {
+    "code": "VRN",
+    "category": "Amber",
+    "color": "#EA9C15",
+    "engine": "Yes — on stand",
+    "justification": "1 unit",
+    "turnRank": 25,
+    "turnTotal": 39
+  },
+  {
+    "code": "ZAD",
+    "category": "Green",
+    "color": "#2C8937",
+    "engine": "Yes — on stand",
+    "justification": "2 mobile ACUs and engine start allowed",
+    "turnRank": 1,
+    "turnTotal": 33
+  },
+  {
+    "code": "ZTH",
+    "category": "Red",
+    "color": "#E94949",
+    "engine": "No",
+    "justification": null,
+    "turnRank": 16,
+    "turnTotal": 35
+  }
+];
+  const map = L.map('map').setView([48.2, 9.0], 4);
+  const cartoLight = L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {maxZoom:20, subdomains:'abcd'}).addTo(map);
+const osmLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {maxZoom:12});
+L.control.layers({ 'CARTO Light': cartoLight, 'OSM Standard': osmLayer }).addTo(map);
+
+  const airportsCSV = 'https://davidmegginson.github.io/ourairports-data/airports.csv';
+  function toLookup(rows) {
+    const idx = {};
+    for (const r of rows) {
+      const iata = (r['iata_code'] || '').toUpperCase();
+      if (!iata) continue;
+      const lat = parseFloat(r['latitude_deg']);
+      const lon = parseFloat(r['longitude_deg']);
+      if (isFinite(lat) && isFinite(lon)) { idx[iata] = { name: r['name'] || '', country: r['iso_country'] || '', lat, lon }; }
+    }
+    return idx;
+  }
+
+  Papa.parse(airportsCSV, {
+    header: true, download: true, dynamicTyping: false, skipEmptyLines: true,
+    complete: (results) => {
+      const lookup = toLookup(results.data);
+      const layerGroup = L.layerGroup().addTo(map);
+      const bounds = [];
+      const missing = [];
+      for (const s of stations) {
+        const rec = lookup[s.code];
+        if (!rec) { missing.push(s.code); continue; }
+        const marker = L.circleMarker([rec.lat, rec.lon], { radius: 6, color: '#333', weight: 1, fillColor: s.color, fillOpacity: 0.9 });
+        const popup = `<div style=\"min-width:260px;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif\"><div style=\"font-weight:600;font-size:14px;margin-bottom:4px\">${s.code} — ${rec.name}</div><div style=\"font-size:12px;margin-bottom:2px\"><b>Category:</b> ${s.category}</div>${s.turnRank ? `<div style=\\\"font-size:12px\\\"><b>Turn Performance:</b> #${s.turnRank} of ${s.turnTotal} (${s.category})</div>` : '<div style=\\\"font-size:12px\\\"><b>Turn Performance:</b> n/a — no data</div>'}${s.engine ? `<div style=\\\"font-size:12px\\\"><b>Engine start on stand:</b> ${s.engine}</div>` : ''}${s.justification ? `<div style=\\\"font-size:12px\\\"><b>Justification:</b> ${s.justification}</div>` : ''}${rec.country ? `<div style=\\\"font-size:12px;margin-top:4px;opacity:.8\\\">Country: ${rec.country}</div>` : ''}</div>`;
+            + `<div style="font-weight:600;font-size:14px;margin-bottom:4px">${s.code} — ${rec.name}</div>`
+            + `<div style="font-size:12px;margin-bottom:2px"><b>Category:</b> ${s.category}</div>`
+            + (s.justification ? `<div style="font-size:12px"><b>Justification:</b> ${s.justification}</div>` : '')
+            + (rec.country ? `<div style="font-size:12px;margin-top:4px;opacity:.8">Country: ${rec.country}</div>` : '')
+            + `</div>`;
+        marker.bindPopup(popup);
+        marker.addTo(layerGroup);
+        bounds.push([rec.lat, rec.lon]);
+      }
+      if (bounds.length) { map.fitBounds(bounds, { padding: [30, 30] }); }
+      if (missing.length) { console.warn('No coordinate match for IATA codes:', missing.join(', ')); }
+    }
+  });
+</script>
+</body>
+</html>
